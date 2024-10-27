@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TPOT Chess Club / votechess.01</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .board-container {
+            flex: 0 0 440px;
+        }
+
+        .board-wrapper {
+            display: grid;
+            grid-template-columns: 20px 400px 20px;
+            grid-template-rows: 400px 20px;
+            gap: 0;
+        }
+
+        .right-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .rank-labels {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            font-size: 12px;
+            padding: 4px 0;
+        }
+
+        .file-labels {
+            grid-column: 2;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-size: 12px;
+            padding: 0 4px;
+        }
+
+        .moves-container {
+            background: #f5f5f5;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .move-item {
+            padding: 4px 8px;
+            cursor: pointer;
+            display: inline-block;
+            margin: 2px;
+        }
+
+        .move-item:hover {
+            background: #e0e0e0;
+            border-radius: 4px;
+        }
+
+        .move-item.active {
+            background: #b58863;
+            color: white;
+            border-radius: 4px;
+        }
+
+        .board {
+            width: 400px;
+            height: 400px;
+            border: 2px solid #333;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            transition: transform 0.3s ease;
+        }
+
+        .square {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .square::before {
+            content: '';
+            display: block;
+            padding-top: 100%;
+        }
+
+        .square img {
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: transform 0.3s ease;
+        }
+
+        .white {
+            background-color: #f0d9b5;
+        }
+
+        .black {
+            background-color: #b58863;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 8px 16px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .board.flipped {
+            transform: rotate(180deg);
+        }
+
+        .board.flipped .square img {
+            transform: translate(-50%, -50%) rotate(180deg);
+        }
+
+        .flipped-labels {
+            flex-direction: column-reverse;
+        }
+
+        .flipped-files {
+            flex-direction: row-reverse;
+        }
+
+        .links-container {
+            background: white;
+            border: 2px solid black;
+            padding: 15px;
+            text-align: center;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .links-container a {
+            color: #b58863;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 5px;
+        }
+
+        .links-container a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="game-container">
+            <div class="board-container">
+                <div class="board-wrapper">
+                    <div id="rankLabels" class="rank-labels">
+                        <div>8</div>
+                        <div>7</div>
+                        <div>6</div>
+                        <div>5</div>
+                        <div>4</div>
+                        <div>3</div>
+                        <div>2</div>
+                        <div>1</div>
+                    </div>
+                    <div id="board" class="board"></div>
+                    <div></div>
+                    <div id="fileLabels" class="file-labels">
+                        <div>a</div>
+                        <div>b</div>
+                        <div>c</div>
+                        <div>d</div>
+                        <div>e</div>
+                        <div>f</div>
+                        <div>g</div>
+                        <div>h</div>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button onclick="firstMove()">⟨⟨</button>
+                    <button onclick="prevMove()">⟨</button>
+                    <button onclick="nextMove()">⟩</button>
+                    <button onclick="lastMove()">⟩⟩</button>
+                    <button onclick="flipBoard()">⟲ Flip</button>
+                </div>
+                <div id="currentMove" style="text-align: center; margin-top: 10px;"></div>
+            </div>
+            <div class="right-container">
+                <div class="moves-container" id="movesList"></div>
+                <div class="links-container">
+                    <a href="https://x.com/tpotchess" target="_blank">Hosted by The TPOT Chess Club</a>
+                    <a href="https://discord.gg/dyB9ajCGH6" target="_blank">Join the Discord</a>
+                    <a href="https://x.com/opaeoh" target="_blank">Made by Opaeoh</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const INITIAL_PGN = `1. e4 c5 2. Nf3 Nc6 3. Nc3 g6 4. d4 cxd4 5. Nxd4 Bg7 6. Be3 Nf6 7. Nxc6 bxc6 8. e5 Ng8 9. f4 d6 10. exd6 exd6 11. Qd2 Nf6 12. O-O-O d5 13. Bc5 Be6 14. Kb1 Nd7 15. Bd6 Nb6 16. Bc5 Rb8 17. Qd3 a5 18. Qd2  a4 19. a3 Qf6 20. Kc1 Bh6 21. Be3 O-O 22. g3 Bg4 23. Be2 Bxe2 24. Qxe2 Nc4 25. Bd4 Qd6 26. Nxa4 Rfe8 27. Qf2 Re4 28. Rde1 Rbe8 29. Rxe4 Rxe4 30. Re1 Rxe1+ 31. Qxe1 Bxf4+ 32. Kb1 Be5 33. Bxe5 Nxe5 34. b4 Nc4 35. Qc3 { White offers draw } 35... Qe7 36. Nb2 Qa7 37. Nxc4 dxc4 38. Ka2 Qa6 39. Qd4 h6 40. Qd8+ Kg7 41. Qa5 Qb7 42. a4 Qd7`;
+
+        const chess = new Chess();
+        let moves = [];
+        let currentMoveIndex = -1;
+        let isFlipped = false;
+        
+        const pieceImages = {
+            'b': {
+                'k': 'https://assets-themes.chess.com/image/ejgfv/150/bk.png',
+                'q': 'https://assets-themes.chess.com/image/ejgfv/150/bq.png',
+                'r': 'https://assets-themes.chess.com/image/ejgfv/150/br.png',
+                'b': 'https://assets-themes.chess.com/image/ejgfv/150/bb.png',
+                'n': 'https://assets-themes.chess.com/image/ejgfv/150/bn.png',
+                'p': 'https://assets-themes.chess.com/image/ejgfv/150/bp.png'
+            },
+            'w': {
+                'k': 'https://assets-themes.chess.com/image/ejgfv/150/wk.png',
+                'q': 'https://assets-themes.chess.com/image/ejgfv/150/wq.png',
+                'r': 'https://assets-themes.chess.com/image/ejgfv/150/wr.png',
+                'b': 'https://assets-themes.chess.com/image/ejgfv/150/wb.png',
+                'n': 'https://assets-themes.chess.com/image/ejgfv/150/wn.png',
+                'p': 'https://assets-themes.chess.com/image/ejgfv/150/wp.png'
+            }
+        };
+
+        function createBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(row + col) % 2 === 0 ? 'white' : 'black'}`;
+                    square.id = `square-${row}-${col}`;
+                    board.appendChild(square);
+                }
+            }
+        }
+
+        function displayMoves() {
+            const movesList = document.getElementById('movesList');
+            movesList.innerHTML = '';
+            
+            moves.forEach((move, index) => {
+                if (index % 2 === 0) {
+                    movesList.appendChild(document.createTextNode(`${Math.floor(index/2 + 1)}. `));
+                }
+                
+                const moveSpan = document.createElement('span');
+                moveSpan.className = `move-item ${index === currentMoveIndex ? 'active' : ''}`;
+                moveSpan.textContent = move;
+                moveSpan.onclick = () => goToMove(index);
+                movesList.appendChild(moveSpan);
+                
+                if (index % 2 === 1) {
+                    movesList.appendChild(document.createElement('br'));
+                } else {
+                    movesList.appendChild(document.createTextNode(' '));
+                }
+            });
+        }
+
+        function goToMove(targetIndex) {
+            if (targetIndex === currentMoveIndex) return;
+            
+            if (targetIndex < currentMoveIndex) {
+                while (currentMoveIndex > targetIndex) {
+                    chess.undo();
+                    currentMoveIndex--;
+                }
+            } else {
+                while (currentMoveIndex < targetIndex) {
+                    currentMoveIndex++;
+                    chess.move(moves[currentMoveIndex]);
+                }
+            }
+            updateBoard();
+            displayMoves();
+        }
+
+        function updateBoard() {
+            const position = chess.board();
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.getElementById(`square-${row}-${col}`);
+                    square.innerHTML = '';
+                    const piece = position[row][col];
+                    if (piece) {
+                        const img = document.createElement('img');
+                        img.src = pieceImages[piece.color][piece.type];
+                        img.alt = `${piece.color}${piece.type}`;
+                        square.appendChild(img);
+                    }
+                }
+            }
+            document.getElementById('currentMove').textContent = 
+                currentMoveIndex >= 0 ? 
+                `Move ${Math.floor(currentMoveIndex / 2) + 1}${currentMoveIndex % 2 === 0 ? 'w' : 'b'}` : 
+                'Starting position';
+        }
+
+        function flipBoard() {
+            isFlipped = !isFlipped;
+            const board = document.getElementById('board');
+            const rankLabels = document.getElementById('rankLabels');
+            const fileLabels = document.getElementById('fileLabels');
+            
+            board.classList.toggle('flipped');
+            rankLabels.classList.toggle('flipped-labels');
+            fileLabels.classList.toggle('flipped-files');
+        }
+
+        function loadInitialPosition() {
+            try {
+                chess.load_pgn(INITIAL_PGN);
+                moves = chess.history();
+                chess.reset();
+                currentMoveIndex = -1;
+                updateBoard();
+                displayMoves();
+            } catch (e) {
+                alert('Invalid PGN format');
+            }
+        }
+
+        function nextMove() {
+            if (currentMoveIndex < moves.length - 1) {
+                currentMoveIndex++;
+                chess.move(moves[currentMoveIndex]);
+                updateBoard();
+                displayMoves();
+            }
+        }
+
+        function prevMove() {
+            if (currentMoveIndex >= 0) {
+                chess.undo();
+                currentMoveIndex--;
+                updateBoard();
+                displayMoves();
+            }
+        }
+
+        function firstMove() {
+            while (currentMoveIndex >= 0) {
+                chess.undo();
+                currentMoveIndex--;
+            }
+            updateBoard();
+            displayMoves();
+        }
+
+        function lastMove() {
+            while (currentMoveIndex < moves.length - 1) {
+                currentMoveIndex++;
+                chess.move(moves[currentMoveIndex]);
+            }
+            updateBoard();
+            displayMoves();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowLeft':
+                    prevMove();
+                    break;
+                case 'ArrowRight':
+                    nextMove();
+                    break;
+                case 'Home':
+                    firstMove();
+                    break;
+                case 'End':
+                    lastMove();
+                    break;
+            }
+        });
+
+        createBoard();
+        loadInitialPosition();
+    </script>
+</body>
+</html>
