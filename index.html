@@ -208,6 +208,7 @@
                     <button onclick="nextMove()">⟩</button>
                     <button onclick="lastMove()">⟩⟩</button>
                     <button onclick="flipBoard()">⟲ Flip</button>
+                    <button onclick="openInLichess()">↗ Lichess</button>
                 </div>
                 <div id="currentMove" style="text-align: center; margin-top: 10px;"></div>
             </div>
@@ -248,6 +249,12 @@
                 'p': 'https://assets-themes.chess.com/image/ejgfv/150/wp.png'
             }
         };
+
+        function openInLichess() {
+            const fullPgn = chess.pgn();
+            const encodedPgn = encodeURIComponent(INITIAL_PGN);
+            window.open(`https://lichess.org/analysis/pgn/${encodedPgn}`, '_blank');
+        }
 
         function createBoard() {
             const board = document.getElementById('board');
